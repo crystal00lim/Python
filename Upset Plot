@@ -1,0 +1,70 @@
+""" The goal of this script is to create upset plots
+1. takes in file with comparison groups as keys, gene sets as values. [in terms of a dictionary]
+    Want to improve this part of the script:
+        1. write a script that will create this reformatted data.
+            - original data is from q-valFiltered&Ranked.csv file
+            - all q-valFiltered&Ranked files from one database needs to be read
+            - only the "Gene Set" column is needed for extraction
+        2. export the reformatted data for reference.
+2. create an upset plot
+3. create an informational upset plot table
+    Want to improve this part of the script:
+        1. export the csv as excel
+4. create html code to display table on webpage """
+
+import os
+from matplotlib import pyplot
+import pandas as pd
+from upsetplot import from_contents
+from upsetplot import UpSet
+import openpyxl
+
+os.chdir('/Users/crystal/Downloads/')
+df = pd.read_csv('NEG.c5GOBP.csv')
+print(df)
+
+df.to_csv('NEG.c5GOCC.csv')
+
+# reformat from dataframe to dictionary, forcing gene sets of each comparison groups into a list.
+file = df.to_dict('list')
+
+# remove any 'nan' since comparison groups have different amounts of gene sets.
+newFile = {}
+for x in file.keys():
+    new = list()
+    # print(x)
+    for y in file[x]:
+        if str(y) != 'nan':
+            new.append(y)
+    newFile[x] = new
+
+# reformatting data to be read by package.
+df = from_contents(newFile)
+# print(type(df))
+
+# creating upset plot.
+""" 'subset_size='count'' counts the intersecting gene sets per comparison
+    'show_counts=true' shows the amount of gene sets intersecting in each comparison
+    'ax.style_subsets' highlights certain bars [comparisons] """
+
+ax = UpSet(df, subset_size='count', show_counts=True)
+# ax.style_subsets(present=['Cluster 6', 'Cluster 10'], facecolor='red')
+ax.plot()
+# titling and showing the plot uses matplotlib
+pyplot.title('Overlapping gene sets in hallmark')
+pyplot.show()
+
+# format the from_contents data table and export
+df = pd.DataFrame(df)
+df = df.reset_index()
+print(df)
+df.to_excel('hallmark.UpsetplotTable.xlsx', index=False)
+
+# double-checking that ID column has no duplicate entries.
+ls = df['id']
+print(len(ls))
+ls = list(dict.fromkeys(ls))
+print(len(ls))
+
+# this is for the sake of the html file.
+print(df.to_html(index=False))
