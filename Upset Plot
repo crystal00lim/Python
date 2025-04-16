@@ -2,7 +2,7 @@
 1. takes in file with comparison groups as keys, gene sets as values. [in terms of a dictionary]
     Want to improve this part of the script:
         1. write a script that will create this reformatted data.
-            - original data is from q-valFiltered&Ranked.csv file
+            - original data is from q-valFiltered&Ranked.csv file (see GSEA filter file for how the q-valFiltered&Ranked.csv is made)
             - all q-valFiltered&Ranked files from one database needs to be read
             - only the "Gene Set" column is needed for extraction
         2. export the reformatted data for reference.
@@ -19,11 +19,11 @@ from upsetplot import from_contents
 from upsetplot import UpSet
 import openpyxl
 
-os.chdir('/Users/crystal/Downloads/')
-df = pd.read_csv('NEG.c5GOBP.csv')
+os.chdir('Enter directory here')
+df = pd.read_csv('Enter file name#1 here.csv')
 print(df)
 
-df.to_csv('NEG.c5GOCC.csv')
+df.to_csv('Enter file name#2 here.csv')
 
 # reformat from dataframe to dictionary, forcing gene sets of each comparison groups into a list.
 file = df.to_dict('list')
@@ -58,7 +58,7 @@ pyplot.show()
 df = pd.DataFrame(df)
 df = df.reset_index()
 print(df)
-df.to_excel('hallmark.UpsetplotTable.xlsx', index=False)
+df.to_excel('Enter new file name here.xlsx', index=False)
 
 # double-checking that ID column has no duplicate entries.
 ls = df['id']
