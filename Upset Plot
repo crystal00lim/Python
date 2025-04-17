@@ -67,4 +67,5 @@ ls = list(dict.fromkeys(ls))
 print(len(ls))
 
 # this is for the sake of the html file.
+# possibly implement web scraping for a live update of the gragh on webpage(?) direct upload of html code to webpage?
 print(df.to_html(index=False))
