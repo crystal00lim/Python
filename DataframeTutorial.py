@@ -6,6 +6,7 @@
 import pandas as pd
 
 # First, create lists representing the columns of each dataframe.
+# Notice that different types of lists are accepted. 
 names = ['Ketzia', 'Joey', 'Sara', 'Steve', 'Silvia', 'JongHo', 'Nelson', 'Momo', 'Nancy']
 occupation = ['Dancer', 'Assistant Designer', 'Program associate', 'programmer', 'Architect', 'Architect', 'Freelancer',
               'Unemployed', 'Assistant Designer']
