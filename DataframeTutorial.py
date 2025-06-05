@@ -16,3 +16,12 @@ company = ['none', 'BCBGMAXAZRIAGROUP', 'The Korea Society', 'Samsung', 'GHS Arc
 # Use len() to figure out how many items are on the list
 # You want to make sure all the lists have the same amount of items
 print(len(names))
+
+# Now, create a dataframe where the lists are combined.
+dataframe = {'name':names, 'age':age, 'occupation':occupation, 'company':company}
+# You will notice that when you print dataframe, the format is weird and unexpected.
+print(dataframe)
+
+# To put the dataset into a table format, you'll need an extra function from pandas.
+DF = pd.DataFrame(dataframe)
+print(DF)
