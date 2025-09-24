@@ -12,7 +12,7 @@ directory = str('/Users/crystal/gsea_home/output/jan28/' + folderName)
 os.chdir(directory)
 
 # extracting folder ID number from UserInput to find report file:
-idNumber = re.findall(r'\d+', folderName)
+idNumber = re.findall(r'\d+\.?\d*', folderName)
 idNumber = str(idNumber[1])
 # reading report tsv file
 reportTSV = str('gsea_report_for_KO_3d_DSS_' + idNumber + '.tsv')
