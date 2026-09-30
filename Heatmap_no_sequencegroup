@@ -1,0 +1,246 @@
+import os
+import pandas as pd
+import seaborn as sns
+import matplotlib.pyplot as plt
+import numpy as np
+import matplotlib.patches as mpatches
+
+os.chdir('/Users/crystallim/Downloads')
+
+patient_info = pd.read_csv('doxy_active_pt_2026-09-16.csv')
+wgs = pd.read_csv('WGS-2026-09-25.csv')
+isolate = pd.read_csv('Isolate-2026-09-25.csv')
+culture = pd.read_csv('Culture-2026-09-25.csv')
+
+del patient_info['mb_rec_s1']
+del patient_info['mb_phar_s1']
+del patient_info['mb_nasal_s1']
+del patient_info['mb_uri_s1']
+del patient_info['mb_edta_s1']
+del patient_info['mb_hair_s1']
+del patient_info['mb_vaginal_s2']
+patient_info = patient_info.rename(columns={'gi_surveydoxy': 'doxy_consumption', 'gi_survdoxydays': 'doxy_frequency', 'gi_survey1msex': 'sex_frequency'})
+
+# print(len(patient_info['microbio_sample_id'].unique())) # 1563 rows, 367 people
+# print(wgs) # 678 rows, 178 people
+# print(isolate) # 1810 rows
+# print(culture) # 1088 rows
+
+xlookup = isolate.set_index('isolate_num')['timepoint_id']
+wgs['timepoint_id'] = isolate['isolate_num'].map(xlookup)
+wgs = wgs[wgs['depth'] > 30]
+wgs = wgs[wgs['organism'] == 'Staphylococcus aureus']
+'''
+wgs['participant_id'] = wgs['timepoint_id'].str.rsplit('_', n=1).str[0]
+print(len(wgs['participant_id'].unique()))
+'''
+
+if 'microbio_sample_date_1' in patient_info.columns:
+    patient_info['microbio_sample_date_1'] = pd.to_datetime(patient_info['microbio_sample_date_1'])
+    patient_info = patient_info.sort_values(['microbio_sample_id', 'microbio_sample_date_1'])
+
+patient_info['visit_num'] = patient_info.groupby('microbio_sample_id').cumcount() + 1
+patient_info['timepoint_id'] = patient_info['microbio_sample_id'].astype(str) + '_' + patient_info['visit_num'].astype(str)
+# print(patient_info)
+
+control = patient_info[patient_info['doxy_onf'] == 'Not on Doxy-PEP']
+# print(control) # 371 rows, 81 people
+# print(len(control['microbio_sample_id'].unique()))
+
+turncoat = (control[control['doxy_consumption'] == 1])
+turncoaters = turncoat['microbio_sample_id'].unique()
+# print(turncoat) # 89 rows, 28 people
+# print(len(turncoat['microbio_sample_id'].unique()))
+turncoat = (control['doxy_consumption'] == 1).astype(int)
+control['turncoat'] = turncoat.groupby(control['microbio_sample_id']).cummax()
+control['doxy_consumption'] = np.where(control['turncoat'] == 1, 1, 2)
+turncoat = control[control['doxy_consumption'] == 1]
+# print(turncoat) # 105 rows, 28 people
+# print(len(turncoat['microbio_sample_id'].unique()))
+true = control[control['doxy_consumption'] == 2]
+# print(true) # 266 rows
+
+true_control = control[control['doxy_consumption'] == 2]
+# print(true_control) # 266 rows, 78 people
+# print(len(true_control['microbio_sample_id'].unique()))
+
+doxy = patient_info[patient_info['doxy_onf'] == 'On Doxy-PEP']
+# print(doxy) # 1162 rows, 256 people
+# print(len(doxy['microbio_sample_id'].unique()))
+
+before = doxy[doxy['doxy_before'] == 'Yes']
+# print(before) # 600 rows, 108 people
+# print(len(before['microbio_sample_id'].unique()))
+# before = before.drop_duplicates(subset=['microbio_sample_id']).set_index('microbio_sample_id')['study_statdoxyrx']
+# wgs['timepoint_id'] = isolate['isolate_num'].map(xlookup)
+
+after = doxy[doxy['doxy_before'] == 'No']
+# print(after) # 556 rows, 148 people
+# print(len(after['microbio_sample_id'].unique()))
+
+turncoat = turncoat.copy()
+turncoat['microbio_sample_date_1'] = pd.to_datetime(turncoat['microbio_sample_date_1'])
+turncoat = turncoat.sort_values(['microbio_sample_id', 'microbio_sample_date_1'])
+visit = turncoat.groupby('microbio_sample_id')['microbio_sample_date_1'].transform('first')
+turncoat['days'] = (turncoat['microbio_sample_date_1'] - visit).dt.days
+year = turncoat[(turncoat['days'] > 0) & (turncoat['days'] <= 365)]
+controller = year['microbio_sample_id'].unique()
+turncoat = turncoat[turncoat['microbio_sample_id'].isin(controller)]
+turncoat_wgs = wgs[wgs['timepoint_id'].isin(year['timepoint_id'])]
+# turncoat_wgs['participant_id'] = turncoat_wgs['timepoint_id'].str.rsplit('_', n=1).str[0]
+print(turncoat_wgs) # 12 rows, 7 people
+# print(len(turncoat_wgs['participant_id'].unique()))
+
+true_control = true_control.copy()
+true_control['microbio_sample_date_1'] = pd.to_datetime(true_control['microbio_sample_date_1'])
+true_control = true_control.sort_values(['microbio_sample_id', 'microbio_sample_date_1'])
+visit = true_control.groupby('microbio_sample_id')['microbio_sample_date_1'].transform('first')
+true_control['days'] = (true_control['microbio_sample_date_1'] - visit).dt.days
+year = true_control[(true_control['days'] > 0) & (true_control['days'] <= 365)]
+controller = year['microbio_sample_id'].unique()
+true_control = true_control[true_control['microbio_sample_id'].isin(controller)]
+control_wgs = wgs[wgs['timepoint_id'].isin(true_control['timepoint_id'])]
+control_wgs['timepoint_id'] = control_wgs['timepoint_id'].astype(str).str.strip()
+true_control['timepoint_id'] = true_control['timepoint_id'].astype(str).str.strip()
+lookup_series = true_control.drop_duplicates(subset=['timepoint_id']).set_index('timepoint_id')['days']
+control_wgs['days'] = control_wgs['timepoint_id'].map(lookup_series)
+control_wgs['participant_id'] = control_wgs['timepoint_id'].str.rsplit('_', n=1).str[0]
+print(control_wgs) # 80 samples, 20 people
+print(len(control_wgs['participant_id'].unique()))
+
+before = before.copy()
+before['microbio_sample_date_1'] = pd.to_datetime(before['microbio_sample_date_1'])
+before['study_statdoxyrx'] = pd.to_datetime(before['study_statdoxyrx'])
+before['days'] = (before['microbio_sample_date_1'] - before['study_statdoxyrx']).dt.days
+beforer = before['timepoint_id'].unique() 
+before_wgs = wgs[wgs['timepoint_id'].isin(beforer)]
+# before_wgs['participant_id'] = before_wgs['timepoint_id'].str.rsplit('_', n=1).str[0]
+# print(before_wgs) # 151 samples, 47 people
+# print(len(before_wgs['participant_id'].unique()))
+
+after = after.copy()
+after['microbio_sample_date_1'] = pd.to_datetime(after['microbio_sample_date_1'])
+after = after.sort_values(['microbio_sample_id', 'microbio_sample_date_1'])
+visit = after.groupby('microbio_sample_id')['microbio_sample_date_1'].transform('first')
+after['days'] = (after['microbio_sample_date_1'] - visit).dt.days
+year = after[(after['days'] > 0) & (after['days'] <= 365)]
+controller = year['microbio_sample_id'].unique()
+after = after[after['microbio_sample_id'].isin(controller)]
+after_wgs = wgs[wgs['timepoint_id'].isin(after['timepoint_id'])]
+after['microbio_sample_id'] = after['microbio_sample_id'].astype(str).str.strip()
+# print(after_wgs)
+xlookup = after.set_index('timepoint_id')['days']
+after_wgs['days'] = after['timepoint_id'].map(xlookup)
+# after_wgs['participant_id'] = after_wgs['timepoint_id'].str.rsplit('_', n=1).str[0]
+# print(after_wgs) # 165 samples, 55 people
+# print(len(after_wgs['participant_id'].unique()))
+
+total_doxy = []
+total_doxy.append(list(after_wgs['isolate_num']))
+total_doxy.append(list(before_wgs['isolate_num']))
+total_doxy.append(list(turncoat_wgs['isolate_num']))
+total_doxy = [item for doxy_list in total_doxy for item in doxy_list]
+total_doxy = wgs[wgs['isolate_num'].isin(total_doxy)]
+
+del total_doxy['date_sequenced']
+del total_doxy['date_collected']
+del total_doxy['need_resequencing']
+del total_doxy['arg']
+del total_doxy['depth']
+del total_doxy['organism']
+
+total_doxy['timepoint_id'] = total_doxy['timepoint_id'].astype(str).str.strip()
+before['timepoint_id'] = before['timepoint_id'].astype(str).str.strip()
+before_series = before.drop_duplicates(subset=['timepoint_id']).set_index('timepoint_id')['days']
+before = total_doxy['timepoint_id'].map(before_series)
+
+total_doxy['timepoint_id'] = total_doxy['timepoint_id'].astype(str).str.strip()
+after['timepoint_id'] = after['timepoint_id'].astype(str).str.strip()
+after_series = after.drop_duplicates(subset=['timepoint_id']).set_index('timepoint_id')['days']
+after = total_doxy['timepoint_id'].map(after_series)
+'''
+total_doxy['timepoint_id'] = total_doxy['timepoint_id'].astype(str).str.strip()
+turncoat['timepoint_id'] = turncoat['timepoint_id'].astype(str).str.strip()
+turncoat_series = turncoat.drop_duplicates(subset=['timepoint_id']).set_index('timepoint_id')['days']
+turncoat = total_doxy['timepoint_id'].map(after_series)
+'''
+total_doxy['timepoint_id'] = total_doxy['timepoint_id'].astype(str).str.strip()
+patient_info['timepoint_id'] = patient_info['timepoint_id'].astype(str).str.strip()
+lookup_series = patient_info.drop_duplicates(subset=['timepoint_id']).set_index('timepoint_id')['microbio_sample_date_1']
+total_doxy['collected_date'] = total_doxy['timepoint_id'].map(lookup_series)
+
+total_doxy['days'] = before.fillna(after)# .fillna(turncoat)
+# total_doxy['participant_id'] = total_doxy['timepoint_id'].str.rsplit('_', n=1).str[0]
+# print(total_doxy) # 12 rows, 7 people
+# print(len(total_doxy['participant_id'].unique()))
+# print(list(total_doxy['sequence_type']))
+
+max_days_ctrl = control_wgs['days'].max()
+bins_ctrl = list(range(0, int(max_days_ctrl) + 31, 30))
+
+labels_ctrl = [f'Month {i+1}' for i in range(len(bins_ctrl)-1)]
+control_wgs['month'] = pd.cut(
+    control_wgs['days'], 
+    bins=bins_ctrl,
+    labels=labels_ctrl,
+    right=True,
+    include_lowest=True
+)
+heatmap_ctrl = pd.crosstab(
+    index=control_wgs['sequence_type'],
+    columns=control_wgs['month'],
+    dropna=False
+)
+
+plt.figure(figsize=(12, 6))
+sns.heatmap(
+    heatmap_ctrl,
+    annot=False,
+    yticklabels=True,
+    fmt='d',
+    cmap='YlGnBu',
+    linewidth=0.5,
+    cbar_kws={'label': 'sequence_type'}
+)
+plt.title('S. aureus Sequence Type Without Doxypep (n=20)', fontsize=14, pad=12)
+plt.xlabel('Timeframe (30-Day intervals)', fontsize=11)
+plt.ylabel('Sequence Type', fontsize=11)
+plt.xticks(rotation=45, ha='right')
+plt.tight_layout()
+
+plt.show()
+
+max_days_doxy = total_doxy['days'].max()
+bins = list(range(0, int(max_days_doxy) + 31, 30))
+
+labels = [f'Month {i+1}' for i in range(len(bins)-1)]
+total_doxy['month'] = pd.cut(
+    total_doxy['days'], 
+    bins=bins,
+    labels=labels,
+    right=True,
+    include_lowest=True
+)
+heatmap = pd.crosstab(
+    index=total_doxy['sequence_type'],
+    columns=total_doxy['month'],
+    dropna=False
+)
+
+plt.figure(figsize=(12, 6))
+sns.heatmap(
+    heatmap,
+    annot=False,
+    yticklabels=True,
+    fmt='d',
+    cmap='YlGnBu',
+    linewidth=0.5,
+    cbar_kws={'label': 'sequence_type'}
+)
+plt.title('S. aureus Sequence Type With Doxypep (n=109)', fontsize=14, pad=12)
+plt.xlabel('Timeframe (30-Day intervals)', fontsize=11)
+plt.ylabel('Sequence Type', fontsize=11)
+plt.xticks(rotation=45, ha='right')
+plt.tight_layout()
+
+plt.show()
